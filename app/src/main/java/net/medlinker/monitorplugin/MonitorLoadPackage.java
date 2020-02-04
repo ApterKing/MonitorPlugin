@@ -1,15 +1,17 @@
 package net.medlinker.monitorplugin;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Handler;
+import android.widget.Toast;
 
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
-
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -24,13 +26,14 @@ public class MonitorLoadPackage implements IXposedHookLoadPackage, Serializable 
     }
 
     public void hookForSystemServerContext() {
+
         Observable.interval(5000,1000, TimeUnit.MICROSECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Consumer<Long>() {
                     @Override
                     public void accept(Long aLong) throws Exception {
                         Intent intent = new Intent("net.medlinker.monitor.BOOT");
-                        getCurrentContext().sendBroadcast(intent);
+                        SystemUtils.getCurrentContext().sendBroadcast(intent);
                     }
                 }, new Consumer<Throwable>() {
                     @Override
@@ -38,18 +41,13 @@ public class MonitorLoadPackage implements IXposedHookLoadPackage, Serializable 
 
                     }
                 });
-    }
 
-    private Context getCurrentContext() {
-        try {
-            Object callStaticMethod = XposedHelpers.callStaticMethod(XposedHelpers.findClass("android.app.ActivityThread", null), "currentActivityThread", new Object[0]);
-            if (callStaticMethod == null) {
-                return null;
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                SystemUtils.startApp("net.medlinker.monitor");
             }
-            return (Context) XposedHelpers.callMethod(callStaticMethod, "getSystemContext", new Object[0]);
-        } catch (Throwable th) {
-            return null;
-        }
+        }, 5000);
     }
 
 }
